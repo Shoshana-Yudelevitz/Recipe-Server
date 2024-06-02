@@ -13,7 +13,7 @@ const minimalUserSchema=new mongoose.Schema({
     UserName:{type:String,require:true}
 })
 const minimalCategorySchema =new mongoose.Schema({
-    id:{type:Number,require:true},
+    id:{type:Number},
     categoryName:{type:String}
 })
 
@@ -22,7 +22,7 @@ const recipeSchema =new mongoose.Schema({
     descripition:{type:String},
     categories:[minimalCategorySchema],
     time:{type:Number,require:true},
-    level:{type:Number,enum:['1','2','3','4','5']},
+    level:{type:Number,enum:[1,2,3,4,5]},
     dateAdd:{type:Date},
     layers:[layersSchema],
     instructions:{type:String,require:true},
@@ -37,11 +37,12 @@ module.exports.recipeValidators = {
     addAndUpdateRecipe: Joi.object({
         recipeName:Joi.string().required().min(3).max(20),
         descripition:Joi.string().min(5).max(100),
+        
         categories:Joi.array().items(Joi.object({
                 categoryName:Joi.string().required()
         })).required(),
         time:Joi.number().required(),
-        level:Joi.number().required(),
+        level:Joi.number().required().valid(1, 2, 3, 4, 5),
         dateAdd:Joi.date().required(),
         layers:Joi.array().items(
             Joi.object({
@@ -54,5 +55,4 @@ module.exports.recipeValidators = {
         isPrivate:Joi.bool().required(),
         userRecipe:Joi.required()
  })
-
 }

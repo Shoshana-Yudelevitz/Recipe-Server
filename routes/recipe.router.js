@@ -4,8 +4,7 @@ const { auth } = require('../middlewares/auth');
 
 
 const router=express.Router();
-
-router.get('/',getAllRecipe);
+router.get('/',getAllRecipe)
 router.get('/:id',getDetailsById);
 router.post('/addRecipe',auth,addRecipe)
 router.put('/:id',auth,updateRecipe)

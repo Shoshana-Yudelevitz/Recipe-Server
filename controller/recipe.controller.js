@@ -5,44 +5,35 @@ const { Category, categoryValidators } = require('../models/category.model');
 
 
 
+exports.getAllRecipe = async (req, res, next) => {
+    let { search, page, perPage } = req.query;
+    search ??= '';
+    page ??= 1;
+    perPage ??=20 ;
+
+    console.log("params", search, perPage, page);
+    try {
+        const recipes = await Recipe.find({ recipeName: new RegExp(search), isPrivate: false })
+            .skip((page - 1) * perPage)
+            .limit(perPage)
+            .select('-__v')
+
+        return res.json(recipes);
+    } catch (error) {
+        next(error)
+    }
+}
+
 // exports.getAllRecipe = async (req, res, next) => {
+//     console.log("aaa");
 //     try {
-//         const recipes = await Recipe.find({recipeName:new RegExp(search),isPrivate:false})
-//         .skip((page - 1) * perPage)
-//         .limit(perPage)
-//         .select('-__v');
+//         const recipes = await Recipe.find().select('-__v');
 //         return res.json(recipes)
 //     } catch {
 //         next(error)
 //     }
 // }
-// exports.getAllRecipe = async (req, res, next) => {
-//     let { search, page, perPage } = req.query;
-//     search ??= '';
-//     page ??= 1;
-//     perPage ??= 3;
 
-//     try {
-//         const recipes = await Recipe.find({recipename:new RegExp(search),isPrivate:true})
-//            .skip((page - 1) * perPage)
-//             .limit(perPage)
-//             .select('-__v');
-//             console.log(recipes);
-//            return res.json(recipes)
-//     } catch (error) {
-//         next(error);
-//     }
-// };
-
-
-exports.getAllRecipe = async (req, res, next) => {
-    try {
-        const recipes = await Recipe.find().select('-__v');
-        return res.json(recipes)
-    } catch {
-        next(error)
-    }
-}
 exports.getDetailsById = async (req, res, next) => {
     const id = req.params.id;
 
@@ -106,50 +97,98 @@ exports.getDetailsByUser = async (req, res, next) => {
 //     next(error);
 //    }
 // }
-
 exports.addRecipe = async (req, res, next) => {
-
-    const v = recipeValidators.addAndUpdateRecipe.validate(req.body)
-    if (v.error)
-        return next({ message: v.error.message })
-
     try {
-
-        if (req.user.role === "manage" || req.body.role === "admin") {
+        if (req.user.role === "manage" || req.user.role === "admin") {
             const r = new Recipe(req.body);
-            for (let i = 0; i < r.categories.length; i++) {
-                const categoryDescription = r.categories[i].categoryName;
-                const existingCategory = await Category.findOne({ description: categoryDescription });
-                console.log(existingCategory, 'existingCategory')
-                if (!existingCategory) {
-                    const vc = categoryValidators.addAndUpdateCategory.validate(r.categories[i].categoryName)
-                    if (vc.error)
-                        return next({ message: vc.error.message })
-                    try {
-                        const c = new Category({ description: r.categories[i].categoryName, recipes: [{ recipeName: r.recipeName, recipeImage: r.recipeImage }] })
+            let isExist = false;
+            let foundCategory;
+            for (let index = 0; index < r.categories.length; index++) {
+                foundCategory = await Category.findOne({ description: r.categories[index].categoryName });
+            }
+  
+            if (!foundCategory) {
+                try {
+                    for (let index = 0; index < r.categories.length; index++) {
+                        const c = new Category({
+                            description: r.categories[index].categoryName,
+                            recipesOfCategory: { recipename: r.recipename, image: r.img }
+                        });
                         await c.save();
                     }
-                    catch (error) {
-                        next(error);
-                    }
+                } catch (error) {
+                    console.error(error);
                 }
-                else {
-                    existingCategory.recipes.push({ recipeName: r.recipeName, recipeImage: r.recipeImage })
-                    await existingCategory.save();
-                }
+            } else {
+                console.log(foundCategory);
+                foundCategory.recipesOfCategory.push({ recipename: r.recipename, image: r.img });
+                await foundCategory.save();
             }
+  
             await r.save();
             return res.status(201).json(r);
-        }
-        else {
+        } else {
             next({ message: 'only manage or admin can do it' });
         }
-    }
-
-    catch (error) {
+    } catch (error) {
         next(error);
     }
-}
+};
+
+// exports.addRecipe = async (req, res, next) => {
+
+//     const v = recipeValidators.addAndUpdateRecipe.validate(req.body)
+//     if (v.error)
+//         return next({ message: v.error.message })
+
+//     try {
+
+//         if (req.user.role === "manage" || req.body.role === "admin") {
+//             const r = new Recipe(req.body);
+//             for (let i = 0; i < r.categories.length; i++) {
+//                 const categoryDescription = r.categories[i].categoryName;
+//                 const existingCategory = await Category.findOne({ description: categoryDescription });
+//                 console.log(existingCategory, 'existingCategory')
+//                 if (!existingCategory) {
+//                     const vc = categoryValidators.addAndUpdateCategory.validate(r.categories[i].categoryName)
+
+//                     if (vc.error){
+//                         console.log(vc,"מערך חדש");
+//                         return next({ message: vc.error.message })
+//                     }
+                        
+//                     try {
+//                         const c = new Category({ description: r.categories[i].categoryName, recipes: [{ recipeName: r.recipeName, recipeImage: r.recipeImage }] })
+                       
+//                         await c.save();
+
+//                     }
+//                     catch (error) {
+                        
+//                         next(error);
+//                     }
+//                 }
+//                 else {
+                    
+//                     existingCategory.recipes.push({ recipeName: r.recipeName, recipeImage: r.recipeImage })
+//                     await existingCategory.save();
+                    
+//                 }
+//             }
+            
+//             await r.save();
+//             return res.status(201).json(r);
+//         }
+//         else {
+//             next({ message: 'only manage or admin can do it' });
+//         }
+//     }
+
+//     catch (error) {
+//         next(error);
+//     }
+// }
+
 
 exports.updateRecipe = async (req, res, next) => {
     const v = recipeValidators.addAndUpdateRecipe.validate(req.body)
