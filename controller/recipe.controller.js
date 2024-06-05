@@ -2,6 +2,8 @@
 const { Recipe, recipeValidators } = require('../models/recipe.model');
 const mongoose = require('mongoose');
 const { Category, categoryValidators } = require('../models/category.model');
+const { token } = require('morgan');
+const { User } = require('../models/user.model');
 
 
 
@@ -97,11 +99,22 @@ exports.getDetailsByUser = async (req, res, next) => {
 //     next(error);
 //    }
 // }
+
+//של GPT--- פה זה עובד מעולה,באנגולר
 exports.addRecipe = async (req, res, next) => {
+    const id=req.user.user_id
+    const u=await User.findOne({_id:id})
+    req.body.userRecipe={userName:u.userName,_id:id}
+
+    
+    const v=recipeValidators.addAndUpdateRecipe.validate(req.body);
+    if(v.error)
+        return next({message:v.error.message})
     try {
-        if (req.user.role === "manage" || req.user.role === "admin") {
+        if (req.user.role === "user" || req.user.role === "admin") {
+
             const r = new Recipe(req.body);
-            let isExist = false;
+            
             let foundCategory;
             for (let index = 0; index < r.categories.length; index++) {
                 foundCategory = await Category.findOne({ description: r.categories[index].categoryName });
@@ -112,7 +125,7 @@ exports.addRecipe = async (req, res, next) => {
                     for (let index = 0; index < r.categories.length; index++) {
                         const c = new Category({
                             description: r.categories[index].categoryName,
-                            recipesOfCategory: { recipename: r.recipename, image: r.img }
+                            recipes: { recipename: r.recipename, image: r.img }
                         });
                         await c.save();
                     }
@@ -121,7 +134,7 @@ exports.addRecipe = async (req, res, next) => {
                 }
             } else {
                 console.log(foundCategory);
-                foundCategory.recipesOfCategory.push({ recipename: r.recipename, image: r.img });
+                foundCategory.recipes.push({ recipename: r.recipename, image: r.img });
                 await foundCategory.save();
             }
   
@@ -134,60 +147,6 @@ exports.addRecipe = async (req, res, next) => {
         next(error);
     }
 };
-
-// exports.addRecipe = async (req, res, next) => {
-
-//     const v = recipeValidators.addAndUpdateRecipe.validate(req.body)
-//     if (v.error)
-//         return next({ message: v.error.message })
-
-//     try {
-
-//         if (req.user.role === "manage" || req.body.role === "admin") {
-//             const r = new Recipe(req.body);
-//             for (let i = 0; i < r.categories.length; i++) {
-//                 const categoryDescription = r.categories[i].categoryName;
-//                 const existingCategory = await Category.findOne({ description: categoryDescription });
-//                 console.log(existingCategory, 'existingCategory')
-//                 if (!existingCategory) {
-//                     const vc = categoryValidators.addAndUpdateCategory.validate(r.categories[i].categoryName)
-
-//                     if (vc.error){
-//                         console.log(vc,"מערך חדש");
-//                         return next({ message: vc.error.message })
-//                     }
-                        
-//                     try {
-//                         const c = new Category({ description: r.categories[i].categoryName, recipes: [{ recipeName: r.recipeName, recipeImage: r.recipeImage }] })
-                       
-//                         await c.save();
-
-//                     }
-//                     catch (error) {
-                        
-//                         next(error);
-//                     }
-//                 }
-//                 else {
-                    
-//                     existingCategory.recipes.push({ recipeName: r.recipeName, recipeImage: r.recipeImage })
-//                     await existingCategory.save();
-                    
-//                 }
-//             }
-            
-//             await r.save();
-//             return res.status(201).json(r);
-//         }
-//         else {
-//             next({ message: 'only manage or admin can do it' });
-//         }
-//     }
-
-//     catch (error) {
-//         next(error);
-//     }
-// }
 
 
 exports.updateRecipe = async (req, res, next) => {

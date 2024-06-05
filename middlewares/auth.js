@@ -6,7 +6,9 @@ exports.auth=(req,res,next)=>{
         const [,token]=authorization.split(' ');
         const privateKey=process.env.JWT_SECRET||'JET_SECRET';
         const data=jwt.verify(token,privateKey)
+        
         req.user=data;
+
         next();
     } catch(err){
         next({message:err,status:401})

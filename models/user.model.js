@@ -8,7 +8,7 @@ const userSchema=new mongoose.Schema({
     password:{type:String,require:true,minlength: [4, 'the name must be at least 4 chars'],},
     email:{type:String,require:true,unique:true},
     address:{type:String,require:true},
-    role:{type:String,default:'user',enum:['admin','user','manage']}
+    role:{type:String,default:'user',enum:['admin','user']}
 })
 
 userSchema.pre('save',function(next){
