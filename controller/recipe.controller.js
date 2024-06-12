@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const { Category, categoryValidators } = require('../models/category.model');
 const { token } = require('morgan');
 const { User } = require('../models/user.model');
-
+const jwt = require('jsonwebtoken');
 
 
 exports.getAllRecipe = async (req, res, next) => {
@@ -69,7 +69,7 @@ exports.getDetailsByTime = async (req, res, next) => {
 exports.getDetailsByUser = async (req, res, next) => {
     const id = req.params.id;
     try {
-        if (req.user.role === "manage" || req.body.role === "admin") {
+        // if (req.user.role === "manage" || req.body.role === "admin") {
             const user = await Recipe.find();
             const filteredRecipes = user.filter(recipe => recipe.userRecipe._id = id);
             if (filteredRecipes.length > 0) {
@@ -78,10 +78,10 @@ exports.getDetailsByUser = async (req, res, next) => {
                 next({ message: 'recipe not found', status: 404 });
             }
 
-        }
-        else {
-            next({ message: 'only users can' });
-        }
+        // }
+        // else {
+        //     next({ message: 'only users can' });
+        // }
 
     } catch (err) {
         next(err);
@@ -104,14 +104,14 @@ exports.getDetailsByUser = async (req, res, next) => {
 exports.addRecipe = async (req, res, next) => {
     const id=req.user.user_id
     const u=await User.findOne({_id:id})
-    req.body.userRecipe={userName:u.userName,_id:id}
-
+    req.body.userRecipe={UserName:u.userName,_id:id}
+    
     
     const v=recipeValidators.addAndUpdateRecipe.validate(req.body);
     if(v.error)
         return next({message:v.error.message})
     try {
-        if (req.user.role === "user" || req.user.role === "admin") {
+        // if (req.user.role === "user" || req.user.role === "manage"||req.user.role === "admin") {
 
             const r = new Recipe(req.body);
             
@@ -140,10 +140,11 @@ exports.addRecipe = async (req, res, next) => {
   
             await r.save();
             return res.status(201).json(r);
-        } else {
-            next({ message: 'only manage or admin can do it' });
-        }
-    } catch (error) {
+        // } else {
+        //     next({ message: 'only user or admin can do it' });
+        // }
+    } 
+    catch (error) {
         next(error);
     }
 };
@@ -159,7 +160,7 @@ exports.updateRecipe = async (req, res, next) => {
         next({ message: 'id is not valid' })
 
     try {
-        if (req.user.role === "manage" || req.body.role === "admin") {
+        // if (req.user.role === "manage" || req.body.role === "admin") {
             const r = await Recipe.findByIdAndUpdate(
                 id,
                 { $set: req.body },
@@ -167,10 +168,10 @@ exports.updateRecipe = async (req, res, next) => {
             )
             return res.json(r);
         }
-        else {
-            next({ message: 'only manage or admin can do it' });
-        }
-    }
+        // else {
+        //     next({ message: 'only manage or admin can do it' });
+        // }
+    // }
     catch (error) {
         next(error)
     }
@@ -179,6 +180,7 @@ exports.updateRecipe = async (req, res, next) => {
 
 
 exports.deleteRecipe = async (req, res, next) => {
+    console.log("נכנס");
     const id = req.params.id;
     if (!mongoose.Types.ObjectId.isValid(id))
         next({ message: 'id is not valid' })
@@ -187,7 +189,7 @@ exports.deleteRecipe = async (req, res, next) => {
         try {
             if (!(await Recipe.findById(id)))
                 return next({ message: 'Recipe not found', status: 404 })
-            if (req.user.role === "manage" || req.body.role === "admin") {
+            // if (req.user.role === "manage" || req.body.role === "admin") {
                 const c = await Recipe.findByIdAndDelete(id)
                 for (let i = 0; i < c.categories.length; i++) {
                     const categoryDescription = c.categories[i].categoryName;
@@ -203,15 +205,40 @@ exports.deleteRecipe = async (req, res, next) => {
                         await Category.findByIdAndDelete(exCategory._id)
                     }
                 }
-            }
-            else {
-                next({ message: 'only users can ' });
-            }
+            // }
+            // else {
+            //     next({ message: 'only users can ' });
+            // }
+           console.log("הצליח");
             return res.status(204).send();
 
 
         } catch (error) {
+            console.log("נכשל");
             return next(error)
         }
     }
+   
+      
 }
+exports.checkRecipeOwner = async (req, res, next) => {
+    const token = req.headers.authorization.split(' ')[1];
+    console.log(token,"token");
+    const creatorId = req.body.creatorId;
+    console.log(creatorId,"creatorId");
+    try {
+        // ולבדוק האם הטוקן תקין ומאומת
+        const decodedToken = jwt.verify(token, 'AEAE');
+       console.log(decodedToken,"decodedToken");
+        // אם הטוקן תקין, בדוק האם היוצר הוא אכן המשתמש הנוכחי
+        if (decodedToken.user_id === creatorId) {
+            console.log("true");
+            return res.status(200).json(true);
+        } else {
+            console.log("false");
+            return res.status(200).json(false); // אינו מורשה
+        }
+    } catch (error) {
+        return res.status(200).json(false); // טוקן לא תקין
+    }
+};

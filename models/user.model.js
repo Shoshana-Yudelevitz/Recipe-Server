@@ -44,6 +44,6 @@ module.exports.userValidator ={
 module.exports.generateToken=(user)=>{
     const privateKey = process.env.JWT_SECRET || 'JWT_SECRET'; 
     const data = { role: user.role, user_id: user._id };
-    const token = jwt.sign(data, privateKey, { expiresIn: '5h' }); 
+    const token = jwt.sign(data, privateKey, { expiresIn: '1h' }); 
     return token;
 }
