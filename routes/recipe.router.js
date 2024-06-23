@@ -10,7 +10,7 @@ router.post('/addRecipe',auth,addRecipe)
 router.put('/:id',auth,updateRecipe)
 router.delete('/:id',auth,deleteRecipe)
 router.get('/getDetailsByTime/:time',getDetailsByTime)
-router.get('/getDetailsByUser/:id',auth,getDetailsByUser)
+router.get('/getDetailsByUser/:id',getDetailsByUser)
 router.post('/',checkRecipeOwner);
 
 module.exports=router;

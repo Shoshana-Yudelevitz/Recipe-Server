@@ -7,18 +7,40 @@ const { User } = require('../models/user.model');
 const jwt = require('jsonwebtoken');
 
 
+// exports.getAllRecipe = async (req, res, next) => {
+//     let { search, page, perPage } = req.query;
+//     search ??= '';
+//     page ??= 1;
+//     perPage ??=20 ;
+
+//     console.log("params", search, perPage, page);
+//     try {
+//         const recipes = await Recipe.find({ recipeName: new RegExp(search), isPrivate: false })
+//             .skip((page - 1) * perPage)
+//             .limit(perPage)
+//             .select('-__v')
+
+//         return res.json(recipes);
+//     } catch (error) {
+//         next(error)
+//     }
+// }
 exports.getAllRecipe = async (req, res, next) => {
-    let { search, page, perPage } = req.query;
+    let { search, page, perPage, isFilter } = req.query;
     search ??= '';
     page ??= 1;
-    perPage ??=20 ;
+    perPage ??= 20;
+    isFilter = isFilter === 'true';
 
-    console.log("params", search, perPage, page);
+    console.log("params", search, perPage, page, isFilter);
     try {
-        const recipes = await Recipe.find({ recipeName: new RegExp(search), isPrivate: false })
-            .skip((page - 1) * perPage)
-            .limit(perPage)
-            .select('-__v')
+        let query = Recipe.find({ recipeName: new RegExp(search), isPrivate: false }).select('-__v');
+        
+        if (!isFilter) {
+            query = query.skip((page - 1) * perPage).limit(perPage);
+        }
+
+        const recipes = await query;
 
         return res.json(recipes);
     } catch (error) {
@@ -36,12 +58,14 @@ exports.getAllRecipe = async (req, res, next) => {
 //     }
 // }
 
+
 exports.getDetailsById = async (req, res, next) => {
     const id = req.params.id;
 
     if (!mongoose.Types.ObjectId.isValid(id))
         next({ message: 'id is not valid' })
     else {
+        console.log(id);
         Recipe.findById(id, { __v: false })
             .then(c => {
                 res.json(c);
@@ -58,6 +82,7 @@ exports.getDetailsByTime = async (req, res, next) => {
         const recipes = await Recipe.find();
         const filteredRecipes = recipes.filter(recipe => recipe.time <= timeUrl);
         if (filteredRecipes.length > 0) {
+          
             res.json(filteredRecipes);
         } else {
             next({ message: 'recipe not found', status: 404 });
@@ -66,28 +91,20 @@ exports.getDetailsByTime = async (req, res, next) => {
         next(err);
     }
 }
+
 exports.getDetailsByUser = async (req, res, next) => {
     const id = req.params.id;
     try {
-        // if (req.user.role === "manage" || req.body.role === "admin") {
-            const user = await Recipe.find();
-            const filteredRecipes = user.filter(recipe => recipe.userRecipe._id = id);
-            if (filteredRecipes.length > 0) {
-                res.json(filteredRecipes);
-            } else {
-                next({ message: 'recipe not found', status: 404 });
-            }
-
-        // }
-        // else {
-        //     next({ message: 'only users can' });
-        // }
-
+        const recipes = await Recipe.find({ 'userRecipe._id': id });
+        if (recipes.length > 0) {
+            res.json(recipes);
+        } else {
+            next({ message: 'recipe not found', status: 404 });
+        }
     } catch (err) {
         next(err);
     }
 }
-
 // exports.addCategory=async(req,res,next)=>{
 //    try{
 //     const c=new Category(req.body);
@@ -125,19 +142,20 @@ exports.addRecipe = async (req, res, next) => {
                     for (let index = 0; index < r.categories.length; index++) {
                         const c = new Category({
                             description: r.categories[index].categoryName,
-                            recipes: { recipename: r.recipename, image: r.img }
+                            recipes: { recipeName: r.recipeName, image: r.image }
                         });
                         await c.save();
+                       
                     }
                 } catch (error) {
                     console.error(error);
                 }
             } else {
                 console.log(foundCategory);
-                foundCategory.recipes.push({ recipename: r.recipename, image: r.img });
+                foundCategory.recipes.push({ recipeName: r.recipeName, image: r.image });
                 await foundCategory.save();
             }
-  
+            
             await r.save();
             return res.status(201).json(r);
         // } else {
@@ -221,15 +239,55 @@ exports.deleteRecipe = async (req, res, next) => {
    
       
 }
+// exports.checkRecipeOwner = async (req, res, next) => {
+//     console.log("vhhhhh");
+//     const token = req.headers.authorization.split(' ')[1];
+//     console.log(token,"token");
+//     const creatorId = req.body.creatorId;
+//     console.log(creatorId,"creatorId");
+//     try {
+//         // ולבדוק האם הטוקן תקין ומאומת
+//         const decodedToken = jwt.verify(token, 'AEAE');
+//        console.log(decodedToken,"decodedToken");
+//         // אם הטוקן תקין, בדוק האם היוצר הוא אכן המשתמש הנוכחי
+//         if (decodedToken.user_id === creatorId) {
+//             console.log("true");
+//             return res.status(200).json(true);
+//         } else {
+//             console.log("false");
+//             return res.status(200).json(false); // אינו מורשה
+//         }
+//     } catch (error) {
+//         return res.status(200).json(false); // טוקן לא תקין
+//     }
+// };
 exports.checkRecipeOwner = async (req, res, next) => {
-    const token = req.headers.authorization.split(' ')[1];
-    console.log(token,"token");
+    console.log("vhhhhh");
+
+    // בדיקה האם כותרת authorization קיימת
+    if (!req.headers.authorization) {
+        console.error('Authorization header is missing');
+        return res.status(401).json({ error: 'Authorization header is missing' });
+    }
+
+    const tokenParts = req.headers.authorization.split(' ');
+
+    // בדיקה האם הכותרת בפורמט הנכון
+    if (tokenParts.length !== 2 || tokenParts[0] !== 'Bearer') {
+        console.error('Invalid authorization header format');
+        return res.status(401).json({ error: 'Invalid authorization header format' });
+    }
+
+    const token = tokenParts[1];
+    console.log(token, "token");
     const creatorId = req.body.creatorId;
-    console.log(creatorId,"creatorId");
+    console.log(creatorId, "creatorId");
+
     try {
         // ולבדוק האם הטוקן תקין ומאומת
         const decodedToken = jwt.verify(token, 'AEAE');
-       console.log(decodedToken,"decodedToken");
+        console.log(decodedToken, "decodedToken");
+
         // אם הטוקן תקין, בדוק האם היוצר הוא אכן המשתמש הנוכחי
         if (decodedToken.user_id === creatorId) {
             console.log("true");
@@ -239,6 +297,7 @@ exports.checkRecipeOwner = async (req, res, next) => {
             return res.status(200).json(false); // אינו מורשה
         }
     } catch (error) {
-        return res.status(200).json(false); // טוקן לא תקין
+        console.error('Token verification failed', error);
+        return res.status(401).json({ error: 'Token verification failed' }); // טוקן לא תקין
     }
 };

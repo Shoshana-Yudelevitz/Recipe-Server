@@ -4,7 +4,7 @@ const Joi = require('joi');
 const minimalRecipe=new mongoose.Schema({
     id:{type:Number},
     recipeName:{type:String},
-    recipeImage:{type:String}
+    image:{type:String}
 })
 
 const categorySchema=new mongoose.Schema({
@@ -22,7 +22,7 @@ module.exports.categoryValidators={
         recipes: Joi.array().items(
             Joi.object({
                 recipeName: Joi.string().required(),
-                recipeImage: Joi.string().required(),
+                image: Joi.string().required(),
             })
         ).required(),
     })

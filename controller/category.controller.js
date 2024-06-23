@@ -1,4 +1,5 @@
-const { Category } = require("../models/category.model")
+const { Category } = require("../models/category.model");
+const { User } = require("../models/user.model");
 
 
 exports.getAllCategory=async (req,res,next)=>{
@@ -8,6 +9,7 @@ exports.getAllCategory=async (req,res,next)=>{
              description: 1, 
           };
         const category=await Category.find().select(selectedFields);
+        console.log(category,"category");
         return res.json(category)
     }
     catch{
@@ -32,8 +34,18 @@ exports.getAllCategoryByRecipes=async (req,res,next)=>{
 
     try{
         const category=await Category.findOne({ description: name })
-        .populate('recipes','-_id')
+        // .populate('recipes','-_id')
+        // .select('-__v');
+        .populate({
+            path: 'recipes',
+            select: '-__v', // Exclude __v field from recipes
+            populate: {
+                path:'User' , // Assuming there's a submodel called userRecipe
+                select: '-__v' // Exclude _id and __v fields from userRecipe
+            }
+        })
         .select('-__v');
+        console.log(category,"category");
         return res.json(category)
     }
     catch(error){
