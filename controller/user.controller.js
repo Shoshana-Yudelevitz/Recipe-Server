@@ -50,12 +50,12 @@ exports.signUp = async(req,res,next)=>{
 exports.getAllUsers = async (req,res,next)=>{
     
     try{ 
-        if (req.user.role === "manage" ){
+        if (req.user.role === "admin" ){
         const users = await User.find().select('-__v');
         return res.json(users)
     }
     else {
-        next({ message: 'only manage can get users' });
+        next({ message: 'only admin can get users' });
     }
     } catch{
         next(error)

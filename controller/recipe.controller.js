@@ -66,13 +66,18 @@ exports.getDetailsByTime = async (req, res, next) => {
 exports.getDetailsByUser = async (req, res, next) => {
     const id = req.params.id;
     try {
+        if (req.user.role === "user" || req.body.role === "admin") {
         const recipes = await Recipe.find({ 'userRecipe._id': id });
         if (recipes.length > 0) {
             res.json(recipes);
         } else {
             next({ message: 'recipe not found', status: 404 });
+        }}
+        else {
+            next({ message: 'only users can' });
         }
-    } catch (err) {
+    } 
+    catch (err) {
         next(err);
     }
 }
@@ -145,6 +150,7 @@ exports.addRecipe = async (req, res, next) => {
         return next({ message: v.error.message });
 
     try {
+        if (req.user.role === "user" || req.user.role === "admin") {
         const r = new Recipe(req.body);
         const categoryArr = r.categories;
 
@@ -168,6 +174,9 @@ exports.addRecipe = async (req, res, next) => {
 
         await r.save();
         return res.status(201).json(r);
+    } else {
+        next({ message: 'only user or admin can do it' });
+    }
     } 
     catch (error) {
         next(error);
@@ -184,13 +193,16 @@ exports.updateRecipe = async (req, res, next) => {
         next({ message: 'id is not valid' })
 
     try {
-       
+        if (req.user.role === "user" || req.user.role === "admin") {
             const r = await Recipe.findByIdAndUpdate(
                 id,
                 { $set: req.body },
                 { new: true }
             )
             return res.json(r);
+        } else {
+            next({ message: 'only user or admin can do it' });
+        }
         }
     catch (error) {
         next(error)
@@ -209,7 +221,7 @@ exports.deleteRecipe = async (req, res, next) => {
         try {
             if (!(await Recipe.findById(id)))
                 return next({ message: 'Recipe not found', status: 404 })
-            
+            if (req.user.role === "user" || req.body.role === "admin") {
                 const c = await Recipe.findByIdAndDelete(id)
                 for (let i = 0; i < c.categories.length; i++) {
                     const categoryDescription = c.categories[i].categoryName;
@@ -228,7 +240,10 @@ exports.deleteRecipe = async (req, res, next) => {
            console.log("הצליח");
             return res.status(204).send();
 
-
+        }
+        else {
+            next({ message: 'only users can ' });
+        }
         } catch (error) {
             console.log("נכשל");
             return next(error)
